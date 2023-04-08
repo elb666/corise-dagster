@@ -50,26 +50,32 @@ def csv_helper(file_name: str) -> Iterator[Stock]:
             yield Stock.from_list(row)
 
 
+@op(
+    config_schema={"s3_key": str}
+)
+def get_s3_data_op(context):
+    return list(csv_helper(context.op_config["s3_key"]))
+
+
 @op
-def get_s3_data_op():
+def process_data_op(context, stocks: List[Stock]) -> Aggregation:
+    
+    highest = max(stocks, key=lambda k: k.high)
+    return Aggregation(date = highest.date, high = highest.high)
+
+
+@op
+def put_redis_data_op(aggregation: Aggregation):
     pass
 
 
 @op
-def process_data_op():
-    pass
-
-
-@op
-def put_redis_data_op():
-    pass
-
-
-@op
-def put_s3_data_op():
+def put_s3_data_op(aggregation: Aggregation):
     pass
 
 
 @job
 def machine_learning_job():
-    pass
+    data = process_data_op(get_s3_data_op())
+    put_redis_data_op(data)
+    put_s3_data_op(data)
