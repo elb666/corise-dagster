@@ -50,15 +50,21 @@ def csv_helper(file_name: str) -> Iterator[Stock]:
             yield Stock.from_list(row)
 
 
-@op
-def get_s3_data_op():
-    pass
+@op(config_schema={"s3_key": str})
+def get_s3_data_op(context):
+    return csv_helper(context.op_config["s3_key"])
 
 
 @op
-def process_data_op():
-    pass
+def process_data_op(stocks: Iterator[Stock]):
+    highest = Aggregation(date = datetime(2020, 0, 0), high = 0)
 
+    for stock in stocks:
+        if stock.high > highest.high:
+            highest.date = stock.date
+            highest.high = stock.high
+
+    return highest
 
 @op
 def put_redis_data_op():
