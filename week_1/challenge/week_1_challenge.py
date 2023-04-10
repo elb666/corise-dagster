@@ -8,6 +8,7 @@ from dagster import (
     DynamicOut,
     DynamicOutput,
     In,
+    Int,
     Nothing,
     OpExecutionContext,
     Out,
@@ -55,35 +56,79 @@ def csv_helper(file_name: str) -> Iterator[Stock]:
             yield Stock.from_list(row)
 
 
-@op
-def get_s3_data_op():
-    pass
+@op(config_schema={"s3_key": str},
+    out={
+        "empty_stocks": Out(Nothing, is_required=False),
+        "stocks": Out(dagster_type=List[Stock], is_required=False),
+        },
+    )
+def get_s3_data_op(context):
+    stock_list = list(csv_helper(context.op_config["s3_key"]))
+
+    if stock_list.__len__() == 0:
+        yield Output(None, output_name="empty_stocks")
+    else:
+        yield Output(stock_list, output_name="stocks")
 
 
-@op
-def process_data_op():
-    pass
+@op(config_schema={"nlargest": int},
+    ins={"stocks": In(dagster_type=List[Stock],
+                      description="description of stocks input"),
+         },
+    out={"high":  Out(dagster_type=List[Aggregation],
+                      description="the date and value of the high")
+         },
+    )
+def process_data_op(context, stocks):
+    n = context.op_config["nlargest"]
+
+    highs = nlargest(n, stocks, key=lambda k: k.high)
+    high_aggs = [Aggregation(date=high.date, high=high.high) for high in highs]
+    return high_aggs
 
 
-@op
-def put_redis_data_op():
-    pass
+@op(
+    description="This op hasn't been filled in yet",
+    ins={
+        "aggregation": In(
+           dagster_type=List[Aggregation],
+           description="This is the aggregation that is written to redis"
+           )
+        },
+    out=Out(Nothing),
+)
+def put_redis_data_op(aggregation):
+    print(f"Writing aggregation {aggregation} to redis cache....")
 
 
-@op
-def put_s3_data_op():
-    pass
+@op(
+    description="This op hasn't been filled in yet",
+    ins={
+        "aggregation": In(
+            dagster_type=List[Aggregation],
+            description="This is the aggregation that is written to redis"
+            )
+        },
+)
+def put_s3_data_op(aggregation) -> None:
+    print(f"Putting aggregation {aggregation} to S3....")
 
 
 @op(
     ins={"empty_stocks": In(dagster_type=Any)},
     out=Out(Nothing),
-    description="Notifiy if stock list is empty",
+    description="Notify if stock list is empty",
 )
 def empty_stock_notify_op(context: OpExecutionContext, empty_stocks: Any):
     context.log.info("No stocks returned")
 
 
-@job
+@job(description="Description of job")
 def machine_learning_dynamic_job():
-    pass
+    empty_stocks, stocks = get_s3_data_op()
+
+    empty_stock_notify_op(empty_stocks)
+
+    stock_agg = process_data_op(stocks)
+    put_redis_data_op(stock_agg)
+    put_s3_data_op(stock_agg)
