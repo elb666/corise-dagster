@@ -51,30 +51,44 @@ def csv_helper(file_name: str) -> Iterator[Stock]:
 
 
 @op(
-    config_schema={"s3_key": str}
+    config_schema={"s3_key": str},
 )
 def get_s3_data_op(context):
+    """
+    You can put the description of the op in the docstring like this
+    This doesn't take an `in`, but we use config so we put `context` as a parameter
+    """
     return list(csv_helper(context.op_config["s3_key"]))
 
 
-@op
-def process_data_op(context, stocks: List[Stock]) -> Aggregation:
-    
+@op(
+    description="You can also pass the description of the op in the as a parameter to the op decorator, like this",
+    ins={ "stocks": In(dagster_type = List[Stock], description="description of stocks input")},
+    out={ "high":  Out(dagster_type = Aggregation, description="the date and value of the high")},
+)
+def process_data_op(stocks):
     highest = max(stocks, key=lambda k: k.high)
-    return Aggregation(date = highest.date, high = highest.high)
+    high = Aggregation(date = highest.date, high = highest.high)
+    return high
 
 
-@op
-def put_redis_data_op(aggregation: Aggregation):
+@op(
+    description="This op hasn't been filled in yet",
+    ins={ "aggregation": In(dagster_type = Aggregation, description="This is the aggregation that is written to redis")},
+)
+def put_redis_data_op(aggregation) -> None:
     pass
 
 
-@op
-def put_s3_data_op(aggregation: Aggregation):
+@op(
+    description="This op hasn't been filled in yet",
+    ins={ "aggregation": In(dagster_type = Aggregation, description="This is the aggregation that is written to redis")},
+)
+def put_s3_data_op(aggregation) -> None:
     pass
 
 
-@job
+@job(description="Description of job")
 def machine_learning_job():
     data = process_data_op(get_s3_data_op())
     put_redis_data_op(data)
