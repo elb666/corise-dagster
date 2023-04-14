@@ -65,10 +65,16 @@ def put_s3_data(context: OpExecutionContext, aggregation: Aggregation):
 
 @graph
 def machine_learning_graph():
-    pass
+    data = process_data(get_s3_data())
+
+    put_redis_data(data)
+    put_s3_data(data)
 
 
 local = {
+    "resources": {
+        "redis": {"config": REDIS},
+    },
     "ops": {"get_s3_data": {"config": {"s3_key": S3_FILE}}},
 }
 
@@ -82,8 +88,18 @@ docker = {
 
 machine_learning_job_local = machine_learning_graph.to_job(
     name="machine_learning_job_local",
+    config=local,
+    resource_defs={
+        "s3": mock_s3_resource,
+        "redis": redis_resource
+        }
 )
 
 machine_learning_job_docker = machine_learning_graph.to_job(
     name="machine_learning_job_docker",
+    config=docker,
+    resource_defs={
+        "s3": s3_resource,
+        "redis": redis_resource
+        }
 )
