@@ -56,7 +56,8 @@ def csv_helper(file_name: str) -> Iterator[Stock]:
 def get_s3_data_op(context):
     """
     You can put the description of the op in the docstring like this
-    This doesn't take an `in`, but we use config so we put `context` as a parameter
+    This doesn't take an `in`, but we use config so we put `context` as a
+    parameter
     """
     return list(csv_helper(context.op_config["s3_key"]))
 
@@ -68,7 +69,7 @@ def get_s3_data_op(context):
 )
 def process_data_op(stocks):
     highest = max(stocks, key=lambda k: k.high)
-    high = Aggregation(date = highest.date, high = highest.high)
+    high = Aggregation(date=highest.date, high=highest.high)
     return high
 
 
