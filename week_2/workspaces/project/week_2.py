@@ -23,9 +23,8 @@ from workspaces.types import Aggregation, Stock
 )
 def get_s3_data(context: OpExecutionContext):
     s3_key = context.op_config["s3_key"]
-    stocks = []
-    for record in context.resources.s3.get_data(s3_key):
-        stocks.append(Stock.from_list(record))
+
+    stocks = [Stock.from_list(s) for s in context.resources.s3.get_data(s3_key)]
 
     return stocks
 
