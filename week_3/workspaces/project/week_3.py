@@ -27,7 +27,8 @@ from workspaces.types import Aggregation, Stock
 @op(
     config_schema={"s3_key": str},
     out={"stocks": Out(dagster_type=List[Stock])},
-    required_resource_keys={"s3"}
+    required_resource_keys={"s3"},
+    tags={"kind": "s3"},
 )
 def get_s3_data(context: OpExecutionContext):
     s3_key = context.op_config["s3_key"]
@@ -51,6 +52,7 @@ def process_data(context: OpExecutionContext, stocks: List[Stock]):
 @op(
     ins={ "aggregation": In(dagster_type = Aggregation, description="This is the aggregation that is written to redis")},
     required_resource_keys={"redis"},
+    tags={"kind": "redis"},
 )
 def put_redis_data(context: OpExecutionContext, aggregation: Aggregation):
     name = aggregation.date.isoformat()
@@ -62,6 +64,7 @@ def put_redis_data(context: OpExecutionContext, aggregation: Aggregation):
 @op(
     ins={ "aggregation": In(dagster_type = Aggregation, description="This is the aggregation that is written to redis")},
     required_resource_keys={"s3"},
+    tags={"kind": "postgres"},
 )
 def put_s3_data(context: OpExecutionContext, aggregation: Aggregation):
     key_name = aggregation.date.isoformat()
