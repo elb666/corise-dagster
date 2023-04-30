@@ -18,7 +18,7 @@ from dagster import (
     sensor,
     static_partitioned_config,
 )
-from workspaces.config import REDIS, S3
+from workspaces.config import REDIS, S3, S3_FILE
 from workspaces.project.sensors import get_s3_keys
 from workspaces.resources import mock_s3_resource, redis_resource, s3_resource
 from workspaces.types import Aggregation, Stock
@@ -83,15 +83,15 @@ def machine_learning_graph():
 
 local_resource_defs = {
     "s3": mock_s3_resource,
-    "redis": redis_resource
+    'redis': ResourceDefinition.mock_resource()
 }
 
 local_config = {
     "resources": {
         "s3": {"config": None},
         "redis": {"config": REDIS},
-        "ops": {"get_s3_data": {"config": {"s3_key": S3}}},
     },
+    "ops": {"get_s3_data": {"config": {"s3_key": S3_FILE}}},
 }
 
 docker_resource_defs = {
@@ -112,7 +112,8 @@ def docker_config(partition_key: str):
 
 machine_learning_job_local = machine_learning_graph.to_job(
     name="machine_learning_job_local",
-    resource_defs=local_resource_defs
+    resource_defs=local_resource_defs,
+    config=local_config,
 )
 
 machine_learning_job_docker = machine_learning_graph.to_job(
@@ -130,7 +131,6 @@ def machine_learning_schedule_docker():
         yield RunRequest(
             run_key=key,
             run_config=docker_config.get_run_config_for_partition_key(partition_key=key)
-
                 )
 
 
